@@ -1,0 +1,136 @@
+CHANGES:
+
+2.3:  Public release (01-Mar-98)
+      - Fixed ring detect routines to more accurately detect certain ring
+        patterns.
+      - Rewrote the modem detection routines so that ringconnectd is not so
+        easily fooled by connection scripts/programs that fork into the
+        background.
+      - Added debug option.
+      - Removed kill_after and replaced it with idle_timeout.
+      - Added ppp_device option.
+
+2.2:  Major update (02-Aug-97)
+      - Name change from ringconnect to ringconnectd since it is a daemon now.
+      - Rewrote the ring detect routines to be more system friendly.
+      - Ringconnect is no longer fooled by other programs accessing the modem.
+      - Tonnes of new options including ring codes (see option "rings"),
+        auto link kill & more configurability of existing options.
+
+2.12: Internal release (17-Jul-97)
+      - Added new logging routines.
+
+2.11: Internal release (15-Jul-97)
+      - Added new command line and config file parsing routines.
+
+2.1a: Minor update (09-Jul-97)
+      - Added syslogging functionality and ability to go into daemon mode
+        by Jeremy D. Impson <jdimpson@acm.org>
+
+2.1:  Public release (05-Jul-97)
+      - Got rid of the last system() call! yeah!!!
+      - The ppp connect program is now forked (read forced) into a separate
+        process so it doesn't hang ringconnect.
+      - I've also added command line options -w and -r.
+
+2.0:  First public release (20-Jun-97)
+      - All but one of the system() calls have been replaced with kernel
+        calls and /proc lookups.
+
+1.0:  Non-release (06-Jun-97)
+      - This was just a quick hack to get it going since I was heavy into
+        projects at school.  It was nothing more than a bunch of system()
+        calls to ps, grep, ifconfig and mail =)
+        For the curious, this is what it was:
+
+#include <stdio.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <termios.h>
+
+#ifndef FALSE
+#undef TRUE
+#define TRUE 1==1
+#define FALSE 1==0
+#endif
+
+void fatal(char* where);
+void wait_for_ring(char* device);
+int connect_pppd(int max_tries);
+
+int main(int argc, char* argv[])
+{
+   if(argc != 2)
+   {
+      printf("Useage: ringconnect <tty>\n");
+      exit(1);
+   }
+
+   for(;;)
+   {
+      while(system("ps -c | grep -q pppd") == 0)
+         sleep(10);
+
+      wait_for_ring(argv[1]);
+
+      sleep(5);
+
+      if(!connect_pppd(10))
+      {
+         printf("Can't connect!\n");
+         continue;
+      }
+
+      system("ifconfig ppp0 | mail -s PPPD_IP stenerud@netcom.ca");
+   }
+   exit(0);
+}
+
+int connect_pppd(int max_tries)
+{
+   int tries = 0;
+
+   while(system("ifconfig ppp0 2>/dev/null | grep -q UP") != 0)
+   {
+      if(system("ps -c | grep -q pppd") != 0)
+      {
+         system("pppd");
+         if(tries++ > max_tries)
+            return FALSE;
+      }
+      sleep(5);
+   }
+   return TRUE;
+}
+
+
+void wait_for_ring(char* device)
+{
+   int fd;
+   fd_set in_set;
+   fd_set out_set;
+   fd_set exc_set;
+
+   if( (fd=open(device, O_RDONLY)) < 0 )
+      fatal("open");
+
+   FD_ZERO(&out_set);
+   FD_ZERO(&exc_set);
+   FD_ZERO(&in_set);
+   FD_SET(fd, &in_set);
+   if(select(fd+1, &in_set, &out_set, &exc_set, NULL) < 0)
+      fatal("select");
+
+   close(fd);
+   return;
+}
+
+void fatal(char* where)
+{
+   perror(where);
+   exit(1);
+}
+

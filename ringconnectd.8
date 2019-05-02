@@ -1,0 +1,251 @@
+.\" manual page [] for ringconnect 2.1
+.\" $Id: ringconnect.1,v 2.1 1997/07/03 07:03:17 Karl Stenerud Exp $
+.\" SH section heading
+.\" SS subsection heading
+.\" LP paragraph
+.\" IP indented paragraph
+.\" TP hanging label
+.TH RINGCONNECTD 8
+.SH NAME
+ringconnectd \- Waits for modem ring, connects online, mails your IP
+.SH DESCRIPTION
+.LP
+Ringconnectd monitors
+.B device
+and waits for your modem to ring.  Then, depending on
+.B rings,
+Ringconnectd will call
+.B connect_prg
+to connect online.
+.LP
+Upon connecting, ringconnectd will mail the current IP address to
+.B mailto
+via
+.B smtp_server
+and optionally run
+.B run_prg.
+.SH SYNOPSIS
+.B ringconnectd [options]
+.SH OPTIONS
+Options may be specified in a
+.B configuration file
+or on the command line (See below for details).
+.LP
+The command line version is shown in parenthesis.  (e.g. ringconnectd
+-d /dev/modem)
+.PP
+.B device (-d) <device>
+.RS
+The device your modem is attached to.
+.PD 0
+.PP
+(default /dev/modem)
+.RE
+.PD
+.PP
+.B rings (-R) <number>
+.RS
+Number of rings to react to.  With this option, ringconnectd will connect
+ONLY if it receives EXACTLY the specifed number of rings.  No more, no
+less. If rings is set to 0, ringconnectd will connect after any number of
+rings.
+.PD 0
+.PP
+(default 0)
+.RE
+.PD
+.PP
+.B ring_time (-T) <seconds>
+.RS
+Time between rings.  I made a program called
+.B ringtime
+to calculate the time between rings to the nearest second.  Add 1 to that
+to get a safe value.  In North America, 7 is a safe value.
+.PD 0
+.PP
+For other countries that have a double-ring, such as the UK, you should
+determine the time between sets of rings, divide it in half, and then
+double the rings value.
+.PD 0
+.PP
+I.E. if it goes RING 0.5sec RING 5sec RING 0.5sec RING, you would set
+ring_time to 3 seconds (6/2), and if you want it to answer after "1" ring,
+set rings to 2.  That way it will answer after the RING 0.5sec RING part.
+.PD 0
+.PP
+(default 7)
+.RE
+.PD
+.PP
+.B connect_prg (-c) <path>
+.RS
+The program to use to initiate a PPP connection.  You must specify the
+full path to the executable.
+.PD 0
+.PP
+(default /usr/sbin/pppd)
+.RE
+.PD
+.PP
+.B redial (-r) <tries>
+.RS
+Number of times to redial if ppp fails to connect.
+.PD 0
+.PP
+(default 10)
+.RE
+.PD
+.PP
+.B smtp_server (-s) <server>
+.RS
+The mail server to use when mailing the IP address. ("" = disabled).
+.PD 0
+.PP
+(default "")
+.RE
+.PD
+.PP
+.B mailto (-m) <recipient>
+.RS
+The user to mail to. ("" = disabled).
+.PD 0
+.PP
+(default "")
+.RE
+.PD
+.PP
+.B timeout (-t) <seconds>
+.RS
+Time to wait for a response from the mail server before giving up.
+(-1 = forever).
+.PD 0
+.PP
+(default 30)
+.RE
+.PD
+.PP
+.B run_prg (-p) <path>
+.RS
+Optional program to run upon connecting.  You may also  specify
+command line options so long as everything is contained within quotes.
+You must use full pathnames. ("" = disabled).
+.PD 0
+.PP
+e.g. run_prog "/bin/ping nowhere.com"
+.PP
+(default "")
+.RE
+.PD
+.PP
+.B onceonly (-o)
+.RS
+Connect one time only, then quit.
+.PD 0
+.PP
+(default disabled)
+.RE
+.PD
+.PP
+.B idle_timeout (-i) <seconds>
+.RS
+Close the PPP connection if there is no network activity over the specified
+time.
+(0 = disabled).
+.PD 0
+.PP
+(default 0)
+.RE
+.PD
+.PP
+.B kill_prg (-K) <path>
+.RS
+Use this program to kill the connection instead of killing
+.B connect_prg.
+("" = disabled).
+.PD 0
+.PP
+(default "")
+.RE
+.PD
+.PP
+.B nodetach (-n)
+.RS
+Don't detach and run in daemon mode.  Instead, remain attached to the current
+shell and send all logging to stdout and stderr.
+.PD 0
+.PP
+(default disabled)
+.RE
+.PD
+.PP
+.B debug (-D)
+.RS
+Run in debug mode.  In this mode extra debugging info is output.
+.PD 0
+.PP
+(default disabled)
+.RE
+.PD
+.PP
+.B ppp_device (-P)
+.RS
+Monitor this device for the ppp connection.  You shouldn't need to modify
+this value.
+.PD 0
+.PP
+(default ppp0)
+.RE
+.PD
+.PP
+.B config_file (-f) <path>
+.RS
+Use this file as the configuration file.  Using this option in a
+configuration file will have no effect (for obvious reasons).
+.PD 0
+.PP
+(default /etc/ringconnectd.conf)
+.RE
+.PD
+.SH CONFIGURATION FILE
+Unless otherwise specified on the command line, ringconnectd will look
+for the file /etc/ringconnectd.conf for configuration options.
+The file is set up in the following format:
+.RS
+.B option argument
+.RE
+.TP
+For example:
+.RS
+.PD 0
+device /dev/modem
+.PP
+rings 1
+.PP
+ring_time 7
+.PP
+connect_prg "/bin/sh ~/connect_stript.sh"
+.PD
+.RE
+.SH SIGNALLING RINGCONNECT
+.LP
+Go to a phone, dial your modem number, let it ring according to the
+value you specified for
+.B rings,
+then hang up.  (Remember that the timing when YOU hear a ring is not
+necessarily the same as when the RECIEIENT hears a ring).
+.PP
+Ringconnectd should take about 30-60 seconds to connect online (more
+if it encounters busy signals).
+.PP
+Now, depending on your selected options, ringconnect will mail you your
+machine's current IP address, and execute a specified program.
+(see
+.B smtp_server, mailto, run_prg
+).
+.PP
+Be sure to have a login account setup on your machine as most Linux boxes
+default to not allowing root logins via telnet or FTP.
+.SH SEE ALSO
+.BR pppd (8).
+.SH AUTHOR
+Karl Stenerud (kstenerud@mdsi.bc.ca)
